@@ -2,12 +2,14 @@
   "name": "js-service",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "babel src/ -d build/",
+    "build": "babel index.js src/**/*.js -d dist/",
     "flow": "flow",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "doc": "mkdir -p doc && documentation build ./src/Service.js -f md -o doc/api.md"
+    "doc": "mkdir -p doc && documentation build ./src/Service.js -f md -o doc/api.md",
+    "clean":"rm -rf dist",
+    "prepare":"npm run clean && nm run build"
   },
   "author": "Venkat Peri <venkatperi@gmail.com> (http://www.vperi.com/)",
   "license": "MIT",
