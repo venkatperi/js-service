@@ -8,8 +8,8 @@
     "flow": "flow",
     "test": "echo \"Error: no test specified\" && exit 1",
     "doc": "mkdir -p doc && documentation build ./src/Service.js -f md -o doc/api.md",
-    "clean":"rm -rf dist",
-    "prepare":"npm run clean && npm run build"
+    "clean": "rm -rf dist",
+    "prepare": "npm run clean && npm run build"
   },
   "author": "Venkat Peri <venkatperi@gmail.com> (http://www.vperi.com/)",
   "license": "MIT",
@@ -29,5 +29,9 @@
   "dependencies": {
     "js-fsm": "^0.7.0",
     "moniker": "^0.1.2"
-  }
+  },
+  "files": [
+    "/src",
+    "/dist"
+  ]
 }
