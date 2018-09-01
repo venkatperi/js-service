@@ -20,50 +20,88 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 const assert = require( 'assert' )
-const Service = require( '../src/Service' ).default
+const chai = require( 'chai' );
+const sinon = require( 'sinon' );
+const sinonChai = require( 'sinon-chai' );
+const sinonChaiInOrder = require( 'sinon-chai-in-order' ).default;
+import {Deferred} from '../'
+import TestService from './fixtures/TestService'
 
-class TestService extends Service {
-  constructor() {
-    super()
-  }
+const { expect } = chai
 
-  doStart() {
-  }
+chai.use( sinonChai )
+chai.use( sinonChaiInOrder )
+
+let spy = undefined
+
+function eventOrder( ...events ) {
+  let x = expect( spy ).inOrder.to.have.been.calledWith( events[0] )
+  for ( let e of events.slice( 1 ) )
+    x = x.subsequently.calledWith( e )
 }
 
 describe( 'Service', () => {
   let service = undefined
-  let eventCount = 0
-  beforeEach( () => {
-    service = new TestService()
-    eventCount = 0
-    service.on( 'state', () => eventCount++ )
+  let opts = {}
+  let start = undefined
+  let stop = undefined
+
+  before( () => {
+    spy = sinon.spy()
+    start = new Deferred()
+    stop = new Deferred()
+    service = new TestService( {
+      doStart: async () => await start.promise,
+      doStop: async () => await stop.promise,
+    } )
+    service.on( 'state', spy )
   } )
 
-  describe( 'on calling start()', () => {
-    it( 'transitions to "Starting"', ( done ) => {
-      service.on( 'state', s => {
-        if ( s === 'Starting' ) {
-          assert.equal(1, eventCount)
-          done()
-        }
-      } )
+  it( 'initial state is "New"', async function () {
+    eventOrder( 'New' )
+    assert.equal( service.state, 'New' )
+  } );
 
-      service.start().catch( done )
+  describe( 'on calling start()', function () {
+
+    it( 'transitions to "Starting""', async function () {
+      service.start()
+      assert( service.state, 'Starting' )
+      eventOrder( 'New', 'Starting' )
     } );
 
-    it( 'then transitions to "Running"', ( done ) => {
-      service.on( 'state', s => {
-        if ( s === 'Running' ) {
-          assert.equal( 2, eventCount )
-          done()
-        }
-      } )
-
-      service.start().catch( done )
+    it( 'calls doStart()', function () {
+      assert( service.startCalled )
     } );
+
+    it( 'transitions to "Running" when the service is operational', async function () {
+      start.resolve()
+      await service.running()
+      assert( service.state, 'Running' )
+      eventOrder( 'New', 'Starting', 'Running' )
+    } );
+
+    describe( 'subsequently, on calling start()', function () {
+      it( 'transitions to "Stopping"', async function () {
+        service.stop()
+        assert.equal( service.state, 'Stopping' )
+        eventOrder( 'New', 'Starting', 'Running', 'Stopping' )
+      } );
+
+      it( 'calls doStop()', function () {
+        assert( service.stopCalled )
+      } );
+
+      it( 'transitions to "Terminated" when the service has shut down', async function () {
+        stop.resolve()
+        await service.terminated()
+        // console.log(service.state)
+        assert.equal( service.state, 'Terminated' )
+        eventOrder( 'New', 'Starting', 'Running', 'Stopping', 'Terminated' )
+      } );
+
+    } )
   } )
-
 
 } );
 
