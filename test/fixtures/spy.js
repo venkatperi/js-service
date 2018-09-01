@@ -19,16 +19,25 @@
 //  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import Deferred from './src/Deferred'
-import Service from './src/Service'
-import {Signal, State, Logger, ServiceOpts} from './src/Types';
 
-export {
-  Service,
-  Deferred,
-  State,
-  Signal,
-  Logger,
-  ServiceOpts
+import chai from 'chai';
+import sinon from 'sinon';
+import sinonChai from 'sinon-chai';
+import sinonChaiInOrder from 'sinon-chai-in-order';
+
+chai.use( sinonChai )
+chai.use( sinonChaiInOrder )
+
+const { expect } = chai
+
+export default class Spy {
+  constructor() {
+    this.spy = sinon.spy()
+  }
+
+  inOrder( ...events ) {
+    let x = expect( this.spy ).inOrder.to.have.been.calledWith( events[0] )
+    for ( let e of events.slice( 1 ) )
+      x = x.subsequently.calledWith( e )
+  }
 }
-

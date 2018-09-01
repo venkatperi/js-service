@@ -49,3 +49,6 @@ export type StateInfo = {
 }
 export type Handler = () => Promise<void>
 
+export type Logger = ( ...args: [any] ) => void
+
+export type ServiceOpts = { name: string, logger?: Logger }

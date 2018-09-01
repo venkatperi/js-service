@@ -20,84 +20,44 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 const assert = require( 'assert' )
-const chai = require( 'chai' );
-const sinon = require( 'sinon' );
-const sinonChai = require( 'sinon-chai' );
-const sinonChaiInOrder = require( 'sinon-chai-in-order' ).default;
-import {Deferred} from '../'
 import TestService from './fixtures/TestService'
 
-const { expect } = chai
-
-chai.use( sinonChai )
-chai.use( sinonChaiInOrder )
-
-let spy = undefined
-
-function eventOrder( ...events ) {
-  let x = expect( spy ).inOrder.to.have.been.calledWith( events[0] )
-  for ( let e of events.slice( 1 ) )
-    x = x.subsequently.calledWith( e )
-}
+let service = new TestService()
 
 describe( 'Service', () => {
-  let service = undefined
-  let opts = {}
-  let start = undefined
-  let stop = undefined
 
-  before( () => {
-    spy = sinon.spy()
-    start = new Deferred()
-    stop = new Deferred()
-    service = new TestService( {
-      doStart: async () => await start.promise,
-      doStop: async () => await stop.promise,
-    } )
-    service.on( 'state', spy )
-  } )
+  it( 'initial state is "New"', () => service.inOrder( 'New' ) );
 
-  it( 'initial state is "New"', async function () {
-    eventOrder( 'New' )
-    assert.equal( service.state, 'New' )
-  } );
+  describe( 'on calling start()', () => {
 
-  describe( 'on calling start()', function () {
-
-    it( 'transitions to "Starting""', async function () {
-      service.start()
-      assert( service.state, 'Starting' )
-      eventOrder( 'New', 'Starting' )
+    it( 'transitions to "Starting""', async () => {
+      // noinspection JSIgnoredPromiseFromCall
+      service.start() // don't wait start to finish
+      service.inOrder( 'New', 'Starting' )
     } );
 
-    it( 'calls doStart()', function () {
-      assert( service.startCalled )
-    } );
+    it( 'calls doStart()', () => assert( service.startCalled ) );
 
-    it( 'transitions to "Running" when the service is operational', async function () {
-      start.resolve()
+    it( 'transitions to "Running" when the service is operational', async () => {
+      service.completeStart()
       await service.running()
-      assert( service.state, 'Running' )
-      eventOrder( 'New', 'Starting', 'Running' )
+      service.inOrder( 'New', 'Starting', 'Running' )
     } );
 
-    describe( 'subsequently, on calling start()', function () {
-      it( 'transitions to "Stopping"', async function () {
-        service.stop()
-        assert.equal( service.state, 'Stopping' )
-        eventOrder( 'New', 'Starting', 'Running', 'Stopping' )
+    describe( 'subsequently, on calling stop()', () => {
+
+      it( 'transitions to "Stopping"', async () => {
+        // noinspection JSIgnoredPromiseFromCall
+        service.stop()  // don't await
+        service.inOrder( 'New', 'Starting', 'Running', 'Stopping' )
       } );
 
-      it( 'calls doStop()', function () {
-        assert( service.stopCalled )
-      } );
+      it( 'calls doStop()', () => assert( service.stopCalled ) );
 
-      it( 'transitions to "Terminated" when the service has shut down', async function () {
-        stop.resolve()
+      it( 'transitions to "Terminated" when the service has shut down', async () => {
+        service.completeStop()
         await service.terminated()
-        // console.log(service.state)
-        assert.equal( service.state, 'Terminated' )
-        eventOrder( 'New', 'Starting', 'Running', 'Stopping', 'Terminated' )
+        service.inOrder( 'New', 'Starting', 'Running', 'Stopping', 'Terminated' )
       } );
 
     } )

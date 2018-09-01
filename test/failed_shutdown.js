@@ -19,65 +19,37 @@
 //  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-const assert = require( 'assert' )
-const chai = require( 'chai' );
-const sinon = require( 'sinon' );
-const sinonChai = require( 'sinon-chai' );
-const sinonChaiInOrder = require( 'sinon-chai-in-order' ).default;
-const Deferred = require( '../src/Deferred' ).default
-const TestService = require( './fixtures/TestService' )
+import assert from 'assert';
+import TestService from './fixtures/TestService';
+import delay from './fixtures/delay';
 
-const { expect } = chai
-chai.use( sinonChai )
-chai.use( sinonChaiInOrder )
+let service = new TestService(  )
 
-let spy = undefined
+describe( 'on failure during shutdown', () => {
 
-function eventOrder( ...events ) {
-  let x = expect( spy ).inOrder.to.have.been.calledWith( events[0] )
-  for ( let e of events.slice( 1 ) )
-    x = x.subsequently.calledWith( e )
-}
+  it( 'transitions to "Failed"', async () => {
+    // noinspection JSIgnoredPromiseFromCall
+    service.start()
+    service.completeStart()
+    await service.running()
+    await delay(100)
 
-describe( 'Service', () => {
-  let service = undefined
-  let opts = {}
-  let start = undefined
-  let stop = undefined
-
-  before( () => {
-    spy = sinon.spy()
-    start = new Deferred()
-    stop = new Deferred()
-    service = new TestService( {
-      doStart: async () => await start.promise,
-      doStop: async () => await stop.promise,
+    service.stop().catch( () => {
+      //ignore error
     } )
-    service.on( 'state', spy )
-  } )
 
-  describe( 'on failure during shutdown', function () {
-    it( 'transitions to "Failed"', async function () {
-      service.start()
-      start.resolve()
-      await service.running()
+    service.failStop( 'test error' )
+    try {
+      await service.terminated()
+    }
+    catch ( e ) {
+      assert( e, 'test error' )
+      service.inOrder( 'New', 'Starting', 'Running', 'Stopping', 'Failed' )
+    }
+  } );
 
-      service.stop()
-      stop.reject( 'test error' )
-      try {
-        await service.terminated()
-      }
-      catch ( e ) {
-        assert( e, 'test error' )
-        assert( service.state, 'Failed' )
-        assert( service.failureReason, 'test error' )
-        eventOrder( 'New', 'Starting', 'Running', 'Stopping', 'Failed' )
-      }
-    } );
-
-    it( 'reports the failure reason in failureReason"', async function () {
-      assert( service.failureReason, 'test error' )
-    } );
-  } )
-} );
+  it( 'reports the failure reason in failureReason"', async () => {
+    assert( service.failureReason, 'test error' )
+  } );
+} )
 

@@ -25,7 +25,16 @@
 import EventEmitter from 'events'
 import Deferred from './Deferred'
 import {transition} from './states';
-import type {Handler, Signal, State} from './Types';
+import type {
+  Handler,
+  Logger,
+  ServiceOpts,
+  Signal,
+  State,
+} from './Types';
+
+const nop: Logger = ( ...args ) => {
+}
 
 /**
  * An object with an operational state, plus {@link #start()} and {@link
@@ -59,6 +68,8 @@ export default class Service extends EventEmitter {
   // The service's name
   name: string
 
+  logger: Logger
+
   _state: State = 'New'
 
   _statePromises: { [State]: Deferred } = {
@@ -75,9 +86,10 @@ export default class Service extends EventEmitter {
     Failed: this._failed.bind( this ),
   }
 
-  constructor( name: string ) {
+  constructor( { name, logger }: ServiceOpts = {} ) {
     super();
-    this.name = name
+    this.name = name || ''
+    this.logger = logger || nop
     this.on( 'newListener', ( e, l ) => {
       if ( e === 'state' )
         l( this._state )
@@ -175,29 +187,38 @@ export default class Service extends EventEmitter {
   /// Private
 
   async _fire( signal: Signal ) {
-    // console.log( `fire: ${signal} from ${this._state}` )
+    this.logger( `fire: ${signal} from ${this._state}` )
     let next = transition( this._state, signal )
     await this._setState( next )
   }
 
   async _setState( s: State ) {
-    // console.log(s)
+    this.logger( `setState: ${this._state} -> ${s}` )
     if ( s === this._state ) return
     this._state = s
     this.emit( 'state', s )
     this.emit( s.toLowerCase() )
     if ( this._handlers[s] ) {
-      // console.log(`handler: ${s}`)
       await this._handlers[s]()
     }
   }
 
   async _starting() {
-    await this._tryRun( this.doStart.bind( this ) )
+    try {
+      await this._tryRun( this.doStart.bind( this ) )
+    } catch ( e ) {
+      this._statePromises['Running'].reject( e )
+      throw e
+    }
   }
 
   async _stopping() {
-    await this._tryRun( this.doStop.bind( this ) )
+    try {
+      await this._tryRun( this.doStop.bind( this ) )
+    } catch ( e ) {
+      this._statePromises['Terminated'].reject( e )
+      throw e
+    }
   }
 
   async _cancelling() {
@@ -213,7 +234,7 @@ export default class Service extends EventEmitter {
   }
 
   async _failed() {
-    this._statePromises['Terminated'].reject( this.failureReason )
+    // this._statePromises['Terminated'].reject( this.failureReason )
   }
 
   async _tryRun( f: Handler ) {
@@ -224,6 +245,7 @@ export default class Service extends EventEmitter {
     catch ( e ) {
       this.failureReason = e
       await this._fire( 'error' )
+      throw e
     }
   }
 }

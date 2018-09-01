@@ -19,52 +19,22 @@
 //  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-const assert = require( 'assert' )
-const chai = require( 'chai' );
-const sinon = require( 'sinon' );
-const sinonChai = require( 'sinon-chai' );
-const sinonChaiInOrder = require( 'sinon-chai-in-order' ).default;
-const Deferred = require( '../src/Deferred' ).default
-const TestService = require( './fixtures/TestService' )
+import delay from './fixtures/delay';
 
-const { expect } = chai
-chai.use( sinonChai )
-chai.use( sinonChaiInOrder )
+import TestService from './fixtures/TestService';
 
-let spy = undefined
-
-function eventOrder( ...events ) {
-  let x = expect( spy ).inOrder.to.have.been.calledWith( events[0] )
-  for ( let e of events.slice( 1 ) )
-    x = x.subsequently.calledWith( e )
-}
+let service = new TestService()
 
 describe( 'on stop during "Starting"', () => {
-  let service = undefined
-  let opts = {}
-  let start = undefined
-  let stop = undefined
 
-  before( () => {
-    spy = sinon.spy()
-    start = new Deferred()
-    stop = new Deferred()
-    service = new TestService( {
-      doStart: async () => await start.promise,
-      doStop: async () => await stop.promise,
-    } )
-    service.on( 'state', spy )
-  } )
+  it( 'transitions to "Cancelling"', async () => {
+    // noinspection JSIgnoredPromiseFromCall
+    service.start() // don't await
 
-  it( 'transitions to "Cancelling"', function (done) {
-    service.start()
-    setTimeout( async () => {
-      service.stop()
-      await service.terminated()
-      assert( service.state, 'Terminated' )
-      eventOrder( 'New', 'Starting', 'Cancelling', 'Terminated' )
-      done()
-    }, 100 )
+    await delay( 100 )
+    await service.stop()
+    await service.terminated()
+    service.inOrder( 'New', 'Starting', 'Cancelling', 'Terminated' )
   } );
 
 } );

@@ -19,16 +19,21 @@
 //  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import Deferred from './src/Deferred'
-import Service from './src/Service'
-import {Signal, State, Logger, ServiceOpts} from './src/Types';
+import chai from 'chai';
+import TestService from './fixtures/TestService';
 
-export {
-  Service,
-  Deferred,
-  State,
-  Signal,
-  Logger,
-  ServiceOpts
-}
+const { expect } = chai
+let service = new TestService()
+
+describe( 'calling start from state != "New"', () => {
+
+  it( 'throws an error', async () => {
+    service.start()
+    service.completeStart()
+    await service.running()
+    // service.start().should.be.rejected
+
+  } );
+
+} )
 

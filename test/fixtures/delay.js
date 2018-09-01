@@ -1,3 +1,4 @@
+// @flow
 //  Copyright 2018, Venkat Peri.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
@@ -19,16 +20,9 @@
 //  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import Deferred from './src/Deferred'
-import Service from './src/Service'
-import {Signal, State, Logger, ServiceOpts} from './src/Types';
 
-export {
-  Service,
-  Deferred,
-  State,
-  Signal,
-  Logger,
-  ServiceOpts
+export default async function delay( time: number ) {
+  return new Promise( ( resolve, reject ) => {
+    setTimeout( resolve, time )
+  } )
 }
-

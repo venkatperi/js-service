@@ -1,3 +1,4 @@
+// @flow
 //  Copyright 2018, Venkat Peri.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,31 +21,57 @@
 //  USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-const { Service } = require( '../../' )
+import assert from 'assert'
+import {Deferred, Service, ServiceOpts, State} from '../../';
+import Spy from './Spy'
 
-module.exports = class TestService extends Service {
-  constructor( opts = {} ) {
-    super()
-    this.opts = opts
-    this.startCalled = false
-    this.stopCalled = false
-    this.cancelCalled = false
+export default class TestService extends Service {
+  startCalled = false
+  stopCalled = false
+  cancelCalled = false
+  starter = new Deferred()
+  stopper = new Deferred()
+  spy = new Spy()
+
+  constructor( opts: ServiceOpts ) {
+    super( opts )
+    this.on( 'state', this.spy.spy )
   }
 
   async doStart() {
     this.startCalled = true
-    if ( this.opts.doStart )
-      await this.opts.doStart()
+    await this.starter.promise
   }
 
   async doStop() {
     this.stopCalled = true
-    if ( this.opts.doStop )
-      await this.opts.doStop()
+    await this.stopper.promise
   }
 
   async doCancel() {
     this.cancelCalled = true
   }
+
+  inOrder( ...args: [State] ) {
+    this.spy.inOrder( ...args )
+    assert.equal( this.state, args[args.length - 1] )
+  }
+
+  completeStart() {
+    this.starter.resolve()
+  }
+
+  failStart( e: any ) {
+    this.starter.reject( e )
+  }
+
+  completeStop() {
+    this.stopper.resolve()
+  }
+
+  failStop( e: any ) {
+    this.stopper.reject( e )
+  }
+
 }
 
